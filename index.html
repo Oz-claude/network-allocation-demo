@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Network Allocation Demo</title>
+<style>
+  :root{
+    --navy:#1F3050; --navy2:#2A3B5C; --teal:#2A8F84; --gold:#B99A45; --red:#C0442A;
+    --grey:#8C8C8C; --light:#F2F0EB; --cream:#FBF6E9; --creamBorder:#E7D9AE;
+    --border:#D5D9E0; --bg:#EEF0F3; --ink:#222; --muted:#6B6B6B; --panel:#fff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 16px 60px}
+  /* top bar */
+  .topbar{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:18px;
+    position:sticky;top:0;z-index:20}
+  .topbar .brand{font-weight:700;letter-spacing:.3px;font-size:16px}
+  .topbar .sub{color:#B9C2D4;font-size:12.5px;margin-left:auto}
+  /* ribbon */
+  .ribbon{background:var(--cream);border-bottom:1px solid var(--creamBorder);
+    color:#7A6A2F;font-size:12.5px;padding:8px 20px}
+  .ribbon b{color:#5A4A1A}
+  /* tabs */
+  .tabs{display:flex;gap:4px;margin:18px 0 14px}
+  .tab{padding:9px 18px;border:1px solid var(--border);background:#fff;border-radius:8px;
+    cursor:pointer;font-weight:600;color:var(--muted);font-size:14px;user-select:none}
+  .tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+  /* layout */
+  .grid{display:grid;grid-template-columns:330px 1fr;gap:18px;align-items:start}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+  .panel h3{margin:0 0 4px;font-size:13px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
+  .panel .hint{font-size:12px;color:var(--muted);margin:0 0 14px}
+  /* discipline toggle */
+  .seg{display:flex;gap:6px;margin:6px 0 18px}
+  .seg button{flex:1;padding:9px 6px;border:1px solid var(--border);background:#EDEFF2;border-radius:8px;
+    cursor:pointer;font-weight:700;font-size:12.5px;color:var(--muted)}
+  .seg button.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .seg button small{display:block;font-weight:500;font-size:10px;opacity:.85;margin-top:2px}
+  /* sliders */
+  .ctl{margin:0 0 14px}
+  .ctl .lab{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+  .ctl .lab .v{font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--teal);height:22px}
+  .reset{margin-top:6px;width:100%;padding:9px;border:1px solid var(--border);background:#fff;
+    border-radius:8px;cursor:pointer;font-weight:600;color:var(--muted)}
+  .reset:hover{background:var(--light)}
+  /* order strip */
+  .order{border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:14px;background:#fff}
+  .order .t{font-weight:700;font-size:16px}
+  .order .m{color:var(--muted);font-size:12.5px;margin-top:3px}
+  .order .disc{float:right;text-align:right;font-size:11px;color:var(--muted)}
+  .order .disc b{display:block;color:var(--teal);font-size:13px;margin-top:2px}
+  /* cards */
+  .card{position:relative;border:1px solid var(--border);border-radius:12px;background:#fff;
+    padding:14px 16px 14px 20px;margin-bottom:12px;overflow:hidden}
+  .card .bar{position:absolute;left:0;top:0;bottom:0;width:6px}
+  .card .head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .card .rank{font-size:22px;font-weight:800;line-height:1}
+  .card .name{font-weight:700;font-size:15px}
+  .card .badge{margin-left:auto;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px}
+  .badge.rec{background:var(--teal);color:#fff}
+  .badge.def{background:#EDEFF2;color:var(--muted);border:1px solid var(--border)}
+  .metrics{display:flex;flex-wrap:wrap;gap:22px;margin:2px 0 8px}
+  .metric .k{font-size:10.5px;letter-spacing:.3px;color:var(--muted);text-transform:uppercase}
+  .metric .val{font-weight:700;font-size:15.5px;font-variant-numeric:tabular-nums}
+  .metric .val.pos{color:var(--teal)} .metric .val.neg{color:var(--red)}
+  .why{font-size:12.5px;color:#4A4A4A}
+  .delta{font-size:11.5px;color:var(--navy);font-weight:600}
+  /* breakdown */
+  .brk-toggle{cursor:pointer;font-size:11.5px;color:var(--teal);font-weight:600;margin-top:8px;
+    display:inline-block;user-select:none}
+  .brk{display:none;margin-top:10px;border-top:1px dashed var(--border);padding-top:10px}
+  .brk.open{display:block}
+  .brk table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+  .brk td{padding:3px 6px}
+  .brk td:last-child{text-align:right;font-weight:600}
+  .brk tr.tot td{border-top:1px solid var(--border);font-weight:800;color:var(--navy);padding-top:6px}
+  .brk .comp{color:var(--muted)}
+  /* footer notes */
+  .foot{background:var(--cream);border:1px solid var(--creamBorder);border-radius:12px;
+    padding:12px 16px;font-size:12.5px;color:#7A6A2F;margin-top:4px}
+  .foot .row{margin:4px 0}
+  /* strategy tab */
+  .stab{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  .stab th{background:var(--navy);color:#fff;font-size:12px;text-transform:uppercase;letter-spacing:.4px;
+    padding:11px 14px;text-align:left;font-weight:700}
+  .stab td{padding:11px 14px;border-top:1px solid var(--border);font-size:14px;font-variant-numeric:tabular-nums}
+  .stab tr:nth-child(even) td{background:var(--light)}
+  .pick{font-weight:700;color:var(--navy)}
+  .note{font-size:12.5px;color:var(--muted);margin-top:12px;line-height:1.5}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  @media(max-width:700px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .kpi{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+  .kpi .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted)}
+  .kpi .v{font-size:22px;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums}
+  .kpi .s{font-size:11px;color:var(--muted);margin-top:2px}
+  .hidden{display:none}
+</style>
+</head><body>
+
+<div class="topbar">
+  <div class="brand">NETWORK ALLOCATION</div>
+  <div class="sub">interactive concept demonstration · illustrative data</div>
+</div>
+<div class="ribbon">◇ &nbsp;<b>TEST DATA — every figure is a fictitious assumption from a worked example.</b> Move the controls to see how the model re-derives each output. Client, site and product names are anonymised.</div>
+
+<div class="wrap">
+  <div class="tabs">
+    <div class="tab active" data-tab="route">Order routing</div>
+    <div class="tab" data-tab="strategy">Strategy comparison</div>
+  </div>
+
+  <!-- ROUTE TAB -->
+  <div id="tab-route" class="grid">
+    <!-- controls -->
+    <div class="panel">
+      <h3>Active value discipline</h3>
+      <p class="hint">The strategy the network is run to. It re-ranks the same routes.</p>
+      <div class="seg" id="disc">
+        <button data-d="cost" class="on">Cost<small>operational excellence</small></button>
+        <button data-d="innovation">Innovation<small>product leadership</small></button>
+        <button data-d="intimacy">Intimacy<small>customer</small></button>
+      </div>
+
+      <h3>Variables</h3>
+      <p class="hint">Adjust and watch every figure recompute.</p>
+      <div id="controls"></div>
+      <button class="reset" id="reset">Reset to worked-example values</button>
+    </div>
+
+    <!-- output -->
+    <div>
+      <div class="order">
+        <div class="disc">ACTIVE DISCIPLINE<b id="discName">Cost efficiency</b></div>
+        <div class="t">ORDER 2540 · Client A · personal-wash compound</div>
+        <div class="m" id="orderMeta">4,000 kg call-off · EU distribution centre · promise 28 d · €14.50/kg · site qualification required</div>
+        <div class="m" style="margin-top:6px;font-style:italic">The <b>fit score</b> weighs cost, speed/flexibility, proximity/service, capital and resilience by the active discipline. Innovation favours speed and flexibility; intimacy favours proximity and service — so the scores differ even when the top route is the same.</div>
+      </div>
+      <div id="cards"></div>
+      <div class="foot" id="footNotes"></div>
+    </div>
+  </div>
+
+  <!-- STRATEGY TAB -->
+  <div id="tab-strategy" class="hidden">
+    <div class="kpis" id="kpis"></div>
+    <table class="stab">
+      <thead><tr><th>Value discipline</th><th>Route it selects</th><th>Landed cost</th><th>Margin</th><th>vs baseline</th></tr></thead>
+      <tbody id="stabBody"></tbody>
+    </table>
+    <p class="note" id="stratNote"></p>
+  </div>
+</div>
+
+<script>
+/* ---------- model ---------- */
+const DEFAULTS = {
+  price:14.50, coc:0.09, dutyRate:0.03, promise:28, service:0.90,
+  seaFreight:0.35, airFreight:2.80, convA:1.00
+};
+let V = {...DEFAULTS};
+let discipline = 'cost';
+
+const PKG=0.25, COMP=0.05;
+const baseSeaToB=0.26, roadB=0.18;
+
+// fixed structural criteria per route: [capital, resilience] (do not vary with freight/duty)
+// speed&flex and proximity&service are computed live from lead time and service (see liveCrit)
+const STRUCT = {
+  R1:[100,45], R2:[100,55], R3:[100,60], R5:[90,85]
+};
+// inherent flexibility of the supply model (0-100): full local compounding is most flexible
+const FLEX = { R1:20, R2:35, R3:100, R5:70 };
+// inherent proximity of the finishing step to the customer/creative centre (0-100)
+const PROX = { R1:25, R2:25, R3:100, R5:80 };
+// discipline weights: [cost, speedFlex, proximity, capital, resilience]
+const W = {
+  cost:      [0.45,0.10,0.10,0.25,0.10],
+  innovation:[0.15,0.38,0.17,0.20,0.10],
+  intimacy:  [0.15,0.15,0.50,0.10,0.10]
+};
+const DISC_NAME = {cost:'Cost efficiency', innovation:'Product leadership', intimacy:'Customer intimacy'};
+
+function normCDF(z){
+  const t=1/(1+0.2316419*Math.abs(z));
+  const d=0.3989423*Math.exp(-z*z/2);
+  let p=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));
+  return z>0?1-p:p;
+}
+
+// Build the five-criterion vector for a route, LIVE:
+//  [ speedFlex , proximityService , capital , resilience ]  (cost handled separately)
+// speedFlex blends the supply model's inherent flexibility with how fast this route delivers
+//   relative to the promise. proximityService blends inherent proximity with on-time performance.
+// Faster promises and tighter service thresholds therefore move these scores, so a
+// speed-led (innovation) and a service-led (intimacy) discipline respond differently.
+function liveCrit(x){
+  const speedScore = 100*Math.max(0,Math.min(1,(V.promise - x.lt)/V.promise)); // more slack = faster feel
+  const speedFlex  = 0.55*FLEX[x.id] + 0.45*speedScore;
+  const serviceScore = 100*x.onTime;
+  const proximity  = 0.55*PROX[x.id] + 0.45*serviceScore;
+  return [speedFlex, proximity, STRUCT[x.id][0], STRUCT[x.id][1]];
+}
+
+// build each route's economics from current variables
+function routes(){
+  const r={};
+  // R1 · Plant A sea
+  {const ing=6.20, conv=1.10*V.convA, frt=V.seaFreight;
+   const cif=ing+conv+PKG+frt, duty=V.dutyRate*cif, wc=cif*V.coc*51/365;
+   r.R1={id:'R1',name:'R1 · Plant A · sea',kind:'direct',qualified:true,
+     comps:{Ingredients:ing,Conversion:conv,Packaging:PKG,Freight:frt,Duty:duty,Compliance:COMP,'Working capital':wc},
+     lt:7+35+3, sigma:8};}
+  // R2 · Plant A air
+  {const ing=6.20, conv=1.10*V.convA, frt=V.airFreight;
+   const cif=ing+conv+PKG+frt, duty=V.dutyRate*cif, wc=cif*V.coc*12/365;
+   r.R2={id:'R2',name:'R2 · Plant A · air',kind:'direct',qualified:true,
+     comps:{Ingredients:ing,Conversion:conv,Packaging:PKG,Freight:frt,Duty:duty,Compliance:COMP,'Working capital':wc},
+     lt:7+5+2, sigma:9.2};}
+  // R3 · Plant B direct (baseline)
+  {const ing=6.90, conv=2.60, frt=roadB;
+   const cif=ing+conv+PKG+frt, duty=0, wc=cif*V.coc*8/365;
+   r.R3={id:'R3',name:'R3 · Plant B direct',kind:'baseline',qualified:true,
+     comps:{Ingredients:ing,Conversion:conv,Packaging:PKG,Freight:frt,Duty:duty,Compliance:COMP,'Working capital':wc},
+     lt:6+3, sigma:7};}
+  // R5 · Hybrid: base at Plant A + finish at Plant B
+  {const ingBase=4.65, ingFin=2.25, convBase=0.70*V.convA, convFin=0.95;
+   const ing=ingBase+ingFin, conv=convBase+convFin, frt=baseSeaToB+roadB;
+   const baseCIF=ingBase+convBase+baseSeaToB, duty=V.dutyRate*baseCIF;
+   const cif=ing+conv+PKG+frt, wc=cif*V.coc*35/365;
+   r.R5={id:'R5',name:'R5 · Base Plant A → finish Plant B',kind:'hybrid',qualified:true,
+     comps:{Ingredients:ing,Conversion:conv,Packaging:PKG,Freight:frt,Duty:duty,Compliance:COMP,'Working capital':wc},
+     lt:4+3, sigma:9.5};}
+
+  for(const k in r){
+    const c=r[k].comps;
+    r[k].landed = Object.values(c).reduce((a,b)=>a+b,0);
+    r[k].margin = V.price - r[k].landed;
+    r[k].onTime = Math.max(0,Math.min(1, normCDF((V.promise - r[k].lt)/r[k].sigma)));
+    r[k].admissible = r[k].qualified && r[k].onTime >= V.service;
+  }
+  return r;
+}
+
+function scored(){
+  const r=routes();
+  const adm=Object.values(r).filter(x=>x.admissible);
+  const costs=adm.map(x=>x.landed);
+  const minC=Math.min(...costs), maxC=Math.max(...costs);
+  const w=W[discipline];
+  adm.forEach(x=>{
+    // cost&margin criterion normalised live across admissible routes (lowest cost = 100)
+    const costScore = (maxC===minC)?100:((maxC - x.landed)/(maxC-minC))*100;
+    const cr=liveCrit(x);
+    x.costScore=costScore;
+    x.score = costScore*w[0] + cr[0]*w[1] + cr[1]*w[2] + cr[2]*w[3] + cr[3]*w[4];
+  });
+  adm.sort((a,b)=>b.score-a.score);
+  return {r, adm};
+}
+
+/* ---------- rendering ---------- */
+const CTRLS=[
+  {key:'price', label:'Contract price', min:10, max:20, step:0.1, fmt:v=>'€'+v.toFixed(2)+'/kg'},
+  {key:'seaFreight', label:'Sea freight (Plant A→EU)', min:0.15, max:1.5, step:0.05, fmt:v=>'€'+v.toFixed(2)+'/kg'},
+  {key:'airFreight', label:'Air freight (Plant A→EU)', min:1.0, max:5.0, step:0.1, fmt:v=>'€'+v.toFixed(2)+'/kg'},
+  {key:'dutyRate', label:'Import duty rate', min:0, max:0.12, step:0.005, fmt:v=>(v*100).toFixed(1)+'%'},
+  {key:'coc', label:'Cost of capital', min:0.03, max:0.20, step:0.005, fmt:v=>(v*100).toFixed(1)+'%'},
+  {key:'convA', label:'Plant A conversion cost', min:0.6, max:1.6, step:0.05, fmt:v=>'×'+v.toFixed(2)},
+  {key:'promise', label:'Delivery promise', min:7, max:60, step:1, fmt:v=>v+' days'},
+  {key:'service', label:'Service threshold', min:0.5, max:0.99, step:0.01, fmt:v=>(v*100).toFixed(0)+'% on-time'}
+];
+
+function buildControls(){
+  const box=document.getElementById('controls'); box.innerHTML='';
+  CTRLS.forEach(c=>{
+    const d=document.createElement('div'); d.className='ctl';
+    d.innerHTML=`<div class="lab"><span>${c.label}</span><span class="v" id="v-${c.key}">${c.fmt(V[c.key])}</span></div>`;
+    const inp=document.createElement('input');
+    inp.type='range'; inp.min=c.min; inp.max=c.max; inp.step=c.step; inp.value=V[c.key];
+    inp.addEventListener('input',()=>{ V[c.key]=parseFloat(inp.value);
+      document.getElementById('v-'+c.key).textContent=c.fmt(V[c.key]); render(); });
+    inp.id='inp-'+c.key;
+    d.appendChild(inp); box.appendChild(d);
+  });
+}
+
+const COLORS={R5:'var(--teal)',R3:'var(--gold)',R2:'var(--grey)',R1:'var(--grey)'};
+
+function money(x){return '€'+x.toFixed(2);}
+function reasonFor(x, ranked){
+  if(x.kind==='hybrid') return 'Base concentrate held on regional stock; final compounding at Plant B; duty on the base only.';
+  if(x.kind==='baseline') return 'Full local compounding — today’s default allocation for this contract.';
+  if(x.id==='R2') return 'Air-freight premium over the sea route; meets the promise as a fallback.';
+  if(x.id==='R1') return 'Long sea lead time; lowest cost when service allows it.';
+  return '';
+}
+
+function render(){
+  document.getElementById('discName').textContent=DISC_NAME[discipline];
+  document.getElementById('orderMeta').textContent =
+    `4,000 kg call-off · EU distribution centre · promise ${V.promise} d · €${V.price.toFixed(2)}/kg · site qualification required`;
+
+  const {r, adm}=scored();
+  const baseLanded=r.R3.landed;
+  const cardsEl=document.getElementById('cards'); cardsEl.innerHTML='';
+
+  if(adm.length===0){
+    cardsEl.innerHTML=`<div class="card"><div class="bar" style="background:var(--red)"></div>
+      <div class="head"><div class="name">No admissible route</div></div>
+      <div class="why">At the current promise (${V.promise} days) and service threshold (${(V.service*100).toFixed(0)}% on-time),
+      no qualified route can meet the commitment. The tool will not recommend a route it cannot stand behind.
+      Relax the promise, lower the service threshold, or add capability (e.g. qualify a closer site) to open options.</div></div>`;
+  }
+
+  adm.forEach((x,i)=>{
+    const rec = i===0;
+    const isDefault = x.kind==='baseline';
+    const dv = x.landed-baseLanded;
+    const dtxt = Math.abs(dv)<0.005?'±0.00':(dv>0?'+':'−')+'€'+Math.abs(dv).toFixed(2);
+    const card=document.createElement('div'); card.className='card';
+    let badge = rec?`<span class="badge rec">RECOMMENDED</span>`:(isDefault?`<span class="badge def">TODAY’S DEFAULT</span>`:'');
+    let comprows=Object.entries(x.comps).map(([k,val])=>
+      `<tr><td class="comp">${k}</td><td>${money(val)}</td></tr>`).join('');
+    card.innerHTML=`
+      <div class="bar" style="background:${COLORS[x.id]||'var(--grey)'}"></div>
+      <div class="head">
+        <div class="rank" style="color:${COLORS[x.id]||'var(--grey)'}">${i+1}</div>
+        <div class="name">${x.name}</div>${badge}
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="k">Landed cost</div><div class="val">${money(x.landed)}/kg</div></div>
+        <div class="metric"><div class="k">Margin</div><div class="val ${x.margin>=0?'pos':'neg'}">${money(x.margin)}/kg</div></div>
+        <div class="metric"><div class="k">Delivery</div><div class="val">${x.lt} days</div></div>
+        <div class="metric"><div class="k">On-time</div><div class="val">${(x.onTime*100).toFixed(0)}%</div></div>
+        <div class="metric"><div class="k">vs baseline</div><div class="val delta">${dtxt}</div></div>
+        <div class="metric"><div class="k">Fit score</div><div class="val" style="color:var(--navy)">${x.score.toFixed(1)}</div></div>
+      </div>
+      <div class="why">${reasonFor(x)}</div>
+      <span class="brk-toggle" data-brk="${x.id}">▸ show cost breakdown</span>
+      <div class="brk" id="brk-${x.id}">
+        <table>${comprows}<tr class="tot"><td>Landed cost</td><td>${money(x.landed)}/kg</td></tr></table>
+      </div>`;
+    cardsEl.appendChild(card);
+  });
+
+  // footer: excluded / options
+  const foot=document.getElementById('footNotes'); foot.innerHTML='';
+  const excluded=Object.values(r).filter(x=>x.qualified && !x.admissible);
+  excluded.forEach(x=>{
+    foot.innerHTML+=`<div class="row">⚠ ${x.name} (${money(x.landed)}/kg) excluded — `+
+      `${x.lt}-day lead time gives ${(x.onTime*100).toFixed(0)}% on-time, below the ${(V.service*100).toFixed(0)}% service threshold.</div>`;
+  });
+  // Plant C option (qualification not purchased) — priced against current volume
+  const qualCostPerKg = 120000/ (24000*3); // €120k over 24 t/yr × 3 yr
+  const barnLanded = 9.56 + qualCostPerKg;
+  foot.innerHTML+=`<div class="row">◇ R4 · Plant C not qualified — €120k · 4 months · effective ${money(barnLanded)}/kg at current volume · payback ≈ 38 t/yr.</div>`;
+  if(excluded.length===0 && adm.length){
+    foot.innerHTML = `<div class="row">All qualified routes currently meet the ${(V.service*100).toFixed(0)}% service threshold.</div>` + foot.innerHTML;
+  }
+
+  renderStrategy(r, baseLanded);
+}
+
+function pickFor(disc, r){
+  const adm=Object.values(r).filter(x=>x.admissible);
+  if(!adm.length) return null;
+  const costs=adm.map(x=>x.landed); const minC=Math.min(...costs),maxC=Math.max(...costs);
+  const w=W[disc];
+  adm.forEach(x=>{const cs=(maxC===minC)?100:((maxC-x.landed)/(maxC-minC))*100;const cr=liveCrit(x);
+    x._s=cs*w[0]+cr[0]*w[1]+cr[1]*w[2]+cr[2]*w[3]+cr[3]*w[4];});
+  adm.sort((a,b)=>b._s-a._s); return adm[0];
+}
+
+function renderStrategy(r, baseLanded){
+  const body=document.getElementById('stabBody'); body.innerHTML='';
+  ['cost','innovation','intimacy'].forEach(d=>{
+    const p=pickFor(d,r);
+    const dv = p? p.landed-baseLanded : 0;
+    const dtxt = !p?'—':(Math.abs(dv)<0.005?'±0.00':(dv>0?'+':'−')+'€'+Math.abs(dv).toFixed(2));
+    body.innerHTML+=`<tr>
+      <td>${DISC_NAME[d]}</td>
+      <td class="pick">${p?p.name:'— no admissible route —'}</td>
+      <td>${p?money(p.landed)+'/kg':'—'}</td>
+      <td>${p?money(p.margin)+'/kg':'—'}</td>
+      <td>${dtxt}</td></tr>`;
+  });
+  // KPIs (illustrative, respond to the recommended route under cost)
+  const rec=pickFor('cost',r);
+  const kp=document.getElementById('kpis');
+  const savings = rec? (baseLanded-rec.landed): 0;
+  kp.innerHTML=`
+    <div class="kpi"><div class="k">Recommended saving</div><div class="v">${(savings>=0?'−':'+')}€${Math.abs(savings).toFixed(2)}</div><div class="s">per kg vs baseline (cost discipline)</div></div>
+    <div class="kpi"><div class="k">Annual effect</div><div class="v">€${(Math.abs(savings)*24000/1000).toFixed(0)}k</div><div class="s">at 24 t/yr contract volume</div></div>
+    <div class="kpi"><div class="k">Admissible routes</div><div class="v">${Object.values(r).filter(x=>x.admissible).length}</div><div class="s">meet the ${(V.service*100).toFixed(0)}% service threshold</div></div>
+    <div class="kpi"><div class="k">Baseline landed cost</div><div class="v">€${baseLanded.toFixed(2)}</div><div class="s">Plant B direct, today’s default</div></div>`;
+  document.getElementById('stratNote').innerHTML =
+    'Each discipline is a weighting of the same five evaluation criteria applied to the same routes; only the selection changes, not the underlying figures. '+
+    'Under the worked-example values, cost efficiency selects the hybrid while product leadership and customer intimacy retain Plant B direct, at a priced premium. '+
+    'Change the variables on the Order-routing tab and this table updates with them.';
+}
+
+/* ---------- wiring ---------- */
+document.querySelectorAll('#disc button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('#disc button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); discipline=b.dataset.d; render();
+  });
+});
+document.getElementById('reset').addEventListener('click',()=>{
+  V={...DEFAULTS}; buildControls(); render();
+});
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('tab-route').classList.toggle('hidden', t.dataset.tab!=='route');
+    document.getElementById('tab-strategy').classList.toggle('hidden', t.dataset.tab!=='strategy');
+  });
+});
+document.addEventListener('click',e=>{
+  const tg=e.target.closest('.brk-toggle');
+  if(tg){ const el=document.getElementById('brk-'+tg.dataset.brk);
+    const open=el.classList.toggle('open');
+    tg.textContent=(open?'▾ hide cost breakdown':'▸ show cost breakdown'); }
+});
+buildControls(); render();
+</script>
+</body></html>
